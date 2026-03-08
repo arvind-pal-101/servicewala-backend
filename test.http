@@ -1,0 +1,351 @@
+### ================================================
+### SERVICEWALA - COMPLETE API TESTING
+### ================================================
+
+@baseURL = http://localhost:5000
+@userToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YWM0YzVjZTkyOGI0NGVkN2Y5OGZjYiIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzcyODk5NDIxLCJleHAiOjE3NzU0OTE0MjF9.K7tNllA8IKRzvu7nY4gg4aQmEX7qPaNCa-wR9aPFNLs
+@workerToken = YOUR_WORKER_TOKEN_HERE
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+@categoryId = 69abe2a3ffab57d05838a822
+@workerId = YOUR_WORKER_ID_HERE
+@bookingId = YOUR_BOOKING_ID_HERE
+
+### ================================================
+### SYSTEM HEALTH
+### ================================================
+
+### Root Endpoint
+GET {{baseURL}}
+
+### Health Check
+GET {{baseURL}}/api/health
+
+### ================================================
+### CATEGORIES
+### ================================================
+
+### Get All Categories
+GET {{baseURL}}/api/categories
+
+### Get Category By ID
+GET {{baseURL}}/api/categories/{{categoryId}}
+
+### ================================================
+### USER AUTHENTICATION
+### ================================================
+
+### Register User
+POST {{baseURL}}/api/auth/user/register
+Content-Type: application/json
+
+{
+  "name": "Suresh Sharma",
+  "phone": "9876543210",
+  "email": "suresh@example.com",
+  "password": "password123",
+  "location": {
+    "address": "Ram Ghat",
+    "city": "Ayodhya",
+    "state": "Uttar Pradesh",
+    "pincode": "224123",
+    "coordinates": {
+      "latitude": 26.7922,
+      "longitude": 82.1998
+    }
+  }
+}
+
+### Login User
+POST {{baseURL}}/api/auth/user/login
+Content-Type: application/json
+
+{
+  "phone": "9876543210",
+  "password": "password123"
+}
+
+### Get User Profile
+GET {{baseURL}}/api/auth/user/me
+Authorization: Bearer {{userToken}}
+
+### Update User Profile
+PUT {{baseURL}}/api/auth/user/profile
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "name": "Suresh Kumar Sharma",
+  "email": "suresh.new@example.com"
+}
+
+### ================================================
+### WORKER AUTHENTICATION
+### ================================================
+
+### Register Worker
+POST {{baseURL}}/api/auth/worker/register
+Content-Type: application/json
+
+{
+  "name": "Amit Sharma",
+  "phone": "9345678901",
+  "email": "amit@example.com",
+  "password": "password123",
+  "category": "69ac82be54d5451b9dcea3ae",
+  "experience": 10,
+  "hourlyRate": 400,
+  "location": {
+    "city": "Ayodhya",
+    "coordinates": {
+      "latitude": 26.7922,
+      "longitude": 82.1998
+    }
+  },
+  "documents": {
+    "aadhaarNumber": "345678901234"
+  }
+}
+
+### Login Worker
+POST {{baseURL}}/api/auth/worker/login
+Content-Type: application/json
+
+{
+  "phone": "9123456789",
+  "password": "password123"
+}
+
+### Get Worker Profile
+GET {{baseURL}}/api/auth/worker/me
+Authorization: Bearer {{workerToken}}
+
+### Update Worker Profile
+PUT {{baseURL}}/api/auth/worker/profile
+Content-Type: application/json
+Authorization: Bearer {{workerToken}}
+
+{
+  "name": "Rajesh Kumar Electrician",
+  "hourlyRate": 350
+}
+
+### Update Worker Availability
+PUT {{baseURL}}/api/auth/worker/availability
+Content-Type: application/json
+Authorization: Bearer {{workerToken}}
+
+{
+  "isAvailable": true
+}
+
+### ================================================
+### WORKER SEARCH & BROWSE
+### ================================================
+
+### Search All Workers
+GET {{baseURL}}/api/workers/search
+
+### Search Workers By City
+GET {{baseURL}}/api/workers/search?city=Ayodhya
+
+### Search Workers By Category
+GET {{baseURL}}/api/workers/search?category={{categoryId}}
+
+### Search Workers With Filters
+GET {{baseURL}}/api/workers/search?city=Ayodhya&minRating=4&maxRate=500
+
+### Get Worker By ID
+GET {{baseURL}}/api/workers/{{workerId}}
+
+### ================================================
+### BOOKINGS - CUSTOMER
+### ================================================
+
+### Create Booking
+POST {{baseURL}}/api/bookings
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "worker": "{{workerId}}",
+  "category": "{{categoryId}}",
+  "serviceDetails": {
+    "problemDescription": "Fan nahi chal raha aur switch spark ho raha hai",
+    "serviceAddress": {
+      "address": "123, Ram Ghat",
+      "city": "Ayodhya",
+      "pincode": "224123",
+      "coordinates": {
+        "latitude": 26.7922,
+        "longitude": 82.1998
+      }
+    }
+  },
+  "scheduledDate": "2026-03-08",
+  "scheduledTime": "afternoon"
+}
+
+### Get My Bookings
+GET {{baseURL}}/api/bookings/my-bookings
+Authorization: Bearer {{userToken}}
+
+### Get Booking By ID
+GET {{baseURL}}/api/bookings/{{bookingId}}
+Authorization: Bearer {{userToken}}
+
+### Cancel Booking
+PUT {{baseURL}}/api/bookings/{{bookingId}}/cancel
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "reason": "Changed my mind"
+}
+
+### ================================================
+### BOOKINGS - WORKER
+### ================================================
+
+### Get Worker Bookings
+GET {{baseURL}}/api/bookings/worker-bookings
+Authorization: Bearer {{workerToken}}
+
+### Accept Booking
+PUT {{baseURL}}/api/bookings/{{bookingId}}/accept
+Authorization: Bearer {{workerToken}}
+
+### Reject Booking
+PUT {{baseURL}}/api/bookings/{{bookingId}}/reject
+Content-Type: application/json
+Authorization: Bearer {{workerToken}}
+
+{
+  "reason": "Not available on this date"
+}
+
+### Start Service
+PUT {{baseURL}}/api/bookings/{{bookingId}}/start
+Authorization: Bearer {{workerToken}}
+
+### Complete Booking
+PUT {{baseURL}}/api/bookings/{{bookingId}}/complete
+Content-Type: application/json
+Authorization: Bearer {{workerToken}}
+
+{
+  "finalAmount": 400,
+  "notes": "Fan repaired successfully",
+  "workPhotos": {
+    "before": ["url1"],
+    "after": ["url2"]
+  }
+}
+
+### ================================================
+### REVIEWS
+### ================================================
+
+### Create Review
+POST {{baseURL}}/api/reviews
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "booking": "{{bookingId}}",
+  "worker": "{{workerId}}",
+  "rating": 5,
+  "reviewText": "Bahut accha kaam kiya. On time aaya aur professional service."
+}
+
+### Get Worker Reviews
+GET {{baseURL}}/api/reviews/worker/{{workerId}}
+
+### Get My Reviews
+GET {{baseURL}}/api/reviews/my-reviews
+Authorization: Bearer {{userToken}}
+
+### Update Review
+PUT {{baseURL}}/api/reviews/REVIEW_ID
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "rating": 4,
+  "reviewText": "Good service"
+}
+
+### Delete Review
+DELETE {{baseURL}}/api/reviews/REVIEW_ID
+Authorization: Bearer {{userToken}}
+
+### Report Review
+PUT {{baseURL}}/api/reviews/REVIEW_ID/report
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "reason": "Fake review"
+}
+
+### ================================================
+### ADMIN PANEL
+### ================================================
+
+### Get Dashboard Stats
+GET {{baseURL}}/api/admin/stats
+Authorization: Bearer {{adminToken}}
+
+### Get All Users
+GET {{baseURL}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+
+### Get All Workers (Admin)
+GET {{baseURL}}/api/workers
+Authorization: Bearer {{adminToken}}
+
+### Get Pending Workers
+GET {{baseURL}}/api/workers?status=pending
+Authorization: Bearer {{adminToken}}
+
+### Verify/Approve Worker
+PUT {{baseURL}}/api/workers/{{workerId}}/verify
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "status": "approved"
+}
+
+### Reject Worker
+PUT {{baseURL}}/api/workers/{{workerId}}/verify
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "status": "rejected",
+  "rejectionReason": "Incomplete documents"
+}
+
+### Toggle User Status
+PUT {{baseURL}}/api/admin/users/USER_ID/toggle-status
+Authorization: Bearer {{adminToken}}
+
+### Toggle Worker Status
+PUT {{baseURL}}/api/admin/workers/{{workerId}}/toggle-status
+Authorization: Bearer {{adminToken}}
+
+### Get All Bookings (Admin)
+GET {{baseURL}}/api/admin/bookings
+Authorization: Bearer {{adminToken}}
+
+### Get Reported Reviews
+GET {{baseURL}}/api/admin/reviews/reported
+Authorization: Bearer {{adminToken}}
+
+### Get Analytics - Bookings By Category
+GET {{baseURL}}/api/admin/analytics/bookings-by-category
+Authorization: Bearer {{adminToken}}
+
+### ================================================
+### END OF API TESTING
+### ================================================
