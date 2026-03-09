@@ -15,6 +15,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'https://servicewala-frontend-hs1g.vercel.app',
+  'https://servicewala-frontend-psi.vercel.app',  // ← ADD THIS LINE!
   'https://servicewala-frontend-hs1g-6cqlqpdk2-arvind-pal-s-projects.vercel.app',
 ];
 
