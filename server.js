@@ -12,8 +12,24 @@ connectDB();
 const app = express();
 
 // CORS - IMPORTANT for deployment
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://servicewala-frontend-hs1g.vercel.app',
+  'https://servicewala-frontend-hs1g-6cqlqpdk2-arvind-pal-s-projects.vercel.app',
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
