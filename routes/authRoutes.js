@@ -18,9 +18,23 @@ const {
   updateAvailability
 } = require('../controllers/workerAuthController');
 
+// UNIFIED PROFILE ROUTE - NEW!
+router.get('/profile', protect, async (req, res) => {
+  try {
+    // Check if user or worker based on userType
+    if (req.user.userType === 'worker') {
+      return getWorkerProfile(req, res);
+    } else {
+      return getUserProfile(req, res);
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // USER ROUTES
-router.post('/user/register', registerUser);
-router.post('/user/login', loginUser);
+router.post('/register', registerUser);  // ← Changed from /user/register
+router.post('/login', loginUser);        // ← Changed from /user/login
 router.get('/user/me', protect, getUserProfile);
 router.put('/user/profile', protect, updateUserProfile);
 

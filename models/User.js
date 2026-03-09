@@ -50,7 +50,28 @@ const userSchema = new mongoose.Schema({
   isGuest: {
     type: Boolean,
     default: false
-  }
+  },
+  // Image fields (ADD THIS SECTION)
+  profileImage: {
+    url: {
+      type: String,
+      default: ''
+    },
+    publicId: {
+      type: String,
+      default: ''
+    }
+  },
+  portfolio: [{
+    url: {
+      type: String,
+      required: true
+    },
+    publicId: {
+      type: String,
+      required: true
+    }
+  }],
 }, {
   timestamps: true
 });

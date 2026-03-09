@@ -59,18 +59,22 @@ const bookingSchema = new mongoose.Schema({
     workerEarning: Number
   },
   payment: {
-    method: {
-      type: String,
-      enum: ['cash', 'upi', 'card', 'wallet'],
-      default: 'cash'
-    },
     status: {
       type: String,
-      enum: ['pending', 'completed', 'failed'],
+      enum: ['pending', 'completed', 'failed', 'refunded'],
       default: 'pending'
     },
-    transactionId: String,
-    paidAt: Date
+    method: {
+      type: String,
+      enum: ['cash', 'online', 'upi', 'card', 'wallet'],
+      default: 'cash'
+    },
+    razorpayOrderId: String,
+    razorpayPaymentId: String,
+    refundId: String,
+    refundAmount: Number,
+    paidAt: Date,
+    refundedAt: Date
   },
   timeline: {
     bookedAt: {

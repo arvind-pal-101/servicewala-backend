@@ -221,31 +221,59 @@ const updateProfile = async (req, res) => {
 // @access  Private (Worker)
 const updateAvailability = async (req, res) => {
   try {
-    const worker = await Worker.findById(req.user._id);
-
-    if (worker) {
-      worker.availability.isAvailable = req.body.isAvailable ?? worker.availability.isAvailable;
-      
-      if (req.body.schedule) {
-        worker.availability.schedule = req.body.schedule;
-      }
-
-      const updatedWorker = await worker.save();
-
-      res.json({
-        success: true,
-        message: 'Availability updated successfully',
-        data: {
-          availability: updatedWorker.availability
-        }
+    console.log('=== UPDATE AVAILABILITY CALLED ===');
+    console.log('req.user:', req.user);
+    console.log('req.user._id:', req.user?._id);
+    console.log('req.user.userType:', req.user?.userType);
+    console.log('req.body:', req.body);
+    
+    if (!req.user || !req.user._id) {
+      console.log('ERROR: req.user not found!');
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
       });
-    } else {
-      res.status(404).json({
+    }
+
+    const worker = await Worker.findById(req.user._id);
+    
+    console.log('Worker found:', worker ? `YES - ${worker.name}` : 'NO');
+
+    if (!worker) {
+      console.log('ERROR: Worker not found in DB for ID:', req.user._id);
+      return res.status(404).json({
         success: false,
         message: 'Worker not found'
       });
     }
+
+    console.log('Current availability:', worker.availability);
+    
+    // Update availability
+    if (req.body.isAvailable !== undefined) {
+      worker.availability.isAvailable = req.body.isAvailable;
+      console.log('Setting isAvailable to:', req.body.isAvailable);
+    }
+    
+    if (req.body.schedule) {
+      worker.availability.schedule = req.body.schedule;
+      console.log('Updating schedule');
+    }
+
+    const updatedWorker = await worker.save();
+    console.log('Worker saved! New availability:', updatedWorker.availability);
+
+    res.json({
+      success: true,
+      message: 'Availability updated successfully',
+      data: {
+        availability: updatedWorker.availability
+      }
+    });
   } catch (error) {
+    console.error('=== AVAILABILITY UPDATE ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: error.message

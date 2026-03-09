@@ -64,8 +64,27 @@ const workerSchema = new mongoose.Schema({
     type: String,
     default: 'https://via.placeholder.com/150'
   },
+  // NEW: Cloudinary Profile Image
+  profileImage: {
+    url: {
+      type: String,
+      default: ''
+    },
+    publicId: {
+      type: String,
+      default: ''
+    }
+  },
+  // UPDATED: Portfolio with Cloudinary support
   portfolio: [{
-    type: String
+    url: {
+      type: String,
+      required: true
+    },
+    publicId: {
+      type: String,
+      required: true
+    }
   }],
   documents: {
     aadhaarNumber: {
@@ -150,7 +169,7 @@ const workerSchema = new mongoose.Schema({
 // Geospatial index for location-based search
 workerSchema.index({ 'location.coordinates': '2dsphere' });
 
-// Hash password before saving - SINGLE CLEAN VERSION
+// Hash password before saving
 workerSchema.pre('save', async function() {
   if (!this.isModified('password')) {
     return;
@@ -159,7 +178,7 @@ workerSchema.pre('save', async function() {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Match password method - THIS WAS MISSING!
+// Match password method
 workerSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
