@@ -43,6 +43,8 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Worker'
   }],
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   isActive: {
     type: Boolean,
     default: true
