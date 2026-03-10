@@ -45,4 +45,64 @@ router.get('/worker/me', protect, getWorkerProfile);
 router.put('/worker/profile', protect, updateWorkerProfile);
 router.put('/worker/availability', protect, updateAvailability);
 
+// Favorite workers routes (at the end, before module.exports)
+router.post('/favorites/:workerId', protect, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const { workerId } = req.params;
+    
+    const user = await User.findById(req.user._id);
+    
+    if (!user.favoriteWorkers.includes(workerId)) {
+      user.favoriteWorkers.push(workerId);
+      await user.save();
+    }
+    
+    res.json({
+      success: true,
+      message: 'Worker added to favorites'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.delete('/favorites/:workerId', protect, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const { workerId } = req.params;
+    
+    const user = await User.findById(req.user._id);
+    user.favoriteWorkers = user.favoriteWorkers.filter(
+      id => id.toString() !== workerId
+    );
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: 'Worker removed from favorites'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/favorites', protect, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id)
+      .populate({
+        path: 'favoriteWorkers',
+        populate: { path: 'category' }
+      });
+    
+    res.json({
+      success: true,
+      data: user.favoriteWorkers
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
