@@ -17,7 +17,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://servicewala-frontend-hs1g.vercel.app',
   'https://servicewala-frontend-psi.vercel.app',
-  'https://servicewala-frontend-1mdy.vercel.app',  // ← ADD THIS NEW LINE!
+  'https://servicewala-frontend-1mdy.vercel.app',
+  'https://servicewala-frontend-5eu6epvac-arvind-pal-s-projects.vercel.app',  // ← ADD THIS
   'https://servicewala-frontend-hs1g-6cqlqpdk2-arvind-pal-s-projects.vercel.app',
 ];
 
