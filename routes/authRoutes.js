@@ -4,6 +4,15 @@ const { protect } = require('../middleware/auth');
 const crypto = require('crypto'); // ← ADD THIS
 const sendEmail = require('../utils/sendEmail'); 
 
+const validate = require('../middleware/validate');
+const {
+  registerUserValidation,
+  loginValidation,
+  registerWorkerValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation
+} = require('../validators/authValidators');
+
 // Import controllers
 const {
   registerUser,
@@ -35,14 +44,14 @@ router.get('/profile', protect, async (req, res) => {
 });
 
 // USER ROUTES
-router.post('/register', registerUser);  // ← Changed from /user/register
-router.post('/login', loginUser);        // ← Changed from /user/login
+router.post('/register',registerUserValidation, validate, registerUser);  // ← Changed from /user/register
+router.post('/login', loginValidation, validate, loginUser);
 router.get('/user/me', protect, getUserProfile);
 router.put('/user/profile', protect, updateUserProfile);
 
 // WORKER ROUTES
-router.post('/worker/register', registerWorker);
-router.post('/worker/login', loginWorker);
+router.post('/worker/register', registerWorkerValidation, validate, registerWorker);
+router.post('/worker/login', loginValidation, validate, loginWorker);
 router.get('/worker/me', protect, getWorkerProfile);
 router.put('/worker/profile', protect, updateWorkerProfile);
 router.put('/worker/availability', protect, updateAvailability);
@@ -110,7 +119,7 @@ router.get('/favorites', protect, async (req, res) => {
 // Password Reset Routes
 
 // @route   POST /api/auth/forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', forgotPasswordValidation, validate, async (req, res) => {
   try {
     const { phone } = req.body;
     const User = require('../models/User');
@@ -184,7 +193,7 @@ If you didn't request this, please ignore this email.
 });
 
 // @route   PUT /api/auth/reset-password/:token
-router.put('/reset-password/:token', async (req, res) => {
+router.put('/reset-password/:token', resetPasswordValidation, validate, async (req, res) => {
   try {
     const { password } = req.body;
     const User = require('../models/User');

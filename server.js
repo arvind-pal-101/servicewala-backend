@@ -2,6 +2,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const hpp = require('hpp');
 const connectDB = require('./config/db');
 
 // Load env vars
@@ -12,21 +14,22 @@ connectDB();
 
 const app = express();
 
-// CORS - IMPORTANT for deployment
+// Trust proxy for Render
+app.set('trust proxy', 1);
+
+// CORS
 const allowedOrigins = [
   'http://localhost:3000',
   'https://servicewala-frontend-hs1g.vercel.app',
   'https://servicewala-frontend-psi.vercel.app',
   'https://servicewala-frontend-1mdy.vercel.app',
-  'https://servicewala-frontend-5eu6epvac-arvind-pal-s-projects.vercel.app',  // ← ADD THIS
+  'https://servicewala-frontend-5eu6epvac-arvind-pal-s-projects.vercel.app',
   'https://servicewala-frontend-hs1g-6cqlqpdk2-arvind-pal-s-projects.vercel.app',
 ];
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman)
     if (!origin) return callback(null, true);
-    
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -37,32 +40,53 @@ app.use(cors({
   credentials: true
 }));
 
-app.set('trust proxy', 1);
-app.use(express.json());
+// Body parser
+app.use(express.json({ limit: '10mb' }));
 
+// Set security headers
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Prevent HTTP parameter pollution
+app.use(hpp());
+
+// Rate Limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Max 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again after 15 minutes.'
   },
-  standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false, // Disable X-RateLimit-* headers
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// Apply rate limiting to all routes
 app.use(limiter);
 
-// Stricter rate limit for auth routes (login/register)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Max 10 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: {
     success: false,
-    message: 'Too many login attempts, please try again after 15 minutes.'
+    message: 'Too many authentication attempts from this IP, please try again after 15 minutes.'
   },
-  skipSuccessfulRequests: true, // Don't count successful requests
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: {
+    success: false,
+    message: 'Too many password reset attempts, please try again after 1 hour.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Routes

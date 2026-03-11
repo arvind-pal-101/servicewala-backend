@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { protect, optionalAuth } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const {
+  createBookingValidation,
+  updateBookingStatusValidation
+} = require('../validators/bookingValidators');
+
 const {
   createBooking,
   getMyBookings,
@@ -14,8 +20,8 @@ const {
   confirmCashPayment
 } = require('../controllers/bookingController');
 
-// User routes
-router.post('/', optionalAuth, createBooking);
+// User routes - VALIDATION ADDED
+router.post('/', optionalAuth, createBookingValidation, validate, createBooking);
 router.get('/my-bookings', protect, getMyBookings);
 router.get('/worker-bookings', protect, getWorkerBookings);
 router.get('/:id', protect, getBookingById);
