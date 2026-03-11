@@ -25,6 +25,7 @@ const allowedOrigins = [
   'https://servicewala-frontend-1mdy.vercel.app',
   'https://servicewala-frontend-5eu6epvac-arvind-pal-s-projects.vercel.app',
   'https://servicewala-frontend-hs1g-6cqlqpdk2-arvind-pal-s-projects.vercel.app',
+  'https://servicewala-frontend-2sypn2aye-arvind-pal-s-projects.vercel.app',  // ← NEW
 ];
 
 app.use(cors({
