@@ -8,22 +8,29 @@ async function sendEmail(options) {
 
   // Prefer Resend when API key is set (recommended for Render/Vercel/any cloud)
   if (process.env.RESEND_API_KEY) {
-    const { Resend } = require('resend');
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const from = process.env.RESEND_FROM || 'ServiceWala <onboarding@resend.dev>';
+    try {
+      const { Resend } = require('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      // Resend: default "Resend <onboarding@resend.dev>" for testing
+      const from = (process.env.RESEND_FROM || 'Resend <onboarding@resend.dev>').trim();
 
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [to],
-      subject,
-      text: message,
-      html: html || message.replace(/\n/g, '<br>')
-    });
+      const { data, error } = await resend.emails.send({
+        from,
+        to: [to],
+        subject,
+        text: message,
+        html: html || message.replace(/\n/g, '<br>')
+      });
 
-    if (error) {
-      throw new Error(error.message || 'Resend failed');
+      if (error) {
+        console.error('Resend API error:', error);
+        throw new Error(error.message || 'Resend failed');
+      }
+      return;
+    } catch (err) {
+      console.error('sendEmail (Resend) error:', err.message || err);
+      throw err;
     }
-    return;
   }
 
   // Fallback: Nodemailer SMTP (works locally; may fail on Render free tier)

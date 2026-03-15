@@ -214,10 +214,10 @@ If you didn't request this, please ignore this email.
       user.resetPasswordToken = undefined;
       user.resetPasswordExpire = undefined;
       await user.save();
-
+      console.error('Forgot password – email send failed:', error.message || error);
       return res.status(500).json({
         success: false,
-        message: 'Email could not be sent'
+        message: 'Email could not be sent. Check Render logs for details.'
       });
     }
   } catch (error) {
