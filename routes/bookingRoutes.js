@@ -4,6 +4,7 @@ const { protect, optionalAuth } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const {
   createBookingValidation,
+  completeBookingValidation,
   updateBookingStatusValidation
 } = require('../validators/bookingValidators');
 
@@ -30,7 +31,7 @@ router.get('/:id', protect, getBookingById);
 router.put('/:id/accept', protect, acceptBooking);
 router.put('/:id/reject', protect, rejectBooking);
 router.put('/:id/start', protect, startService);
-router.put('/:id/complete', protect, completeBooking);
+router.put('/:id/complete', protect, completeBookingValidation, validate, completeBooking);
 router.put('/:id/confirm-cash', protect, confirmCashPayment);
 
 // Both user and worker

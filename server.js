@@ -4,6 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const hpp = require('hpp');
+const cookieParser = require('cookie-parser');  // ← ADD THIS
 const connectDB = require('./config/db');
 
 // Load env vars
@@ -18,21 +19,16 @@ const app = express();
 app.set('trust proxy', 1);
 
 // CORS
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://servicewala-frontend-hs1g.vercel.app',
-  'https://servicewala-frontend-psi.vercel.app',
-  'https://servicewala-frontend-1mdy.vercel.app',
-  'https://servicewala-frontend-5eu6epvac-arvind-pal-s-projects.vercel.app',
-  'https://servicewala-frontend-hs1g-6cqlqpdk2-arvind-pal-s-projects.vercel.app',
-  'https://servicewala-frontend-2sypn2aye-arvind-pal-s-projects.vercel.app',
-  'https://servicewala-frontend-71fc3pim6-arvind-pal-s-projects.vercel.app',  // ← Fixed! No trailing slash
-];
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:3000'];
 
 app.use(cors({
   origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
@@ -44,6 +40,8 @@ app.use(cors({
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
+
+app.use(cookieParser());
 
 // Set security headers
 app.use(helmet({
@@ -70,7 +68,7 @@ app.use(limiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   message: {
     success: false,
     message: 'Too many authentication attempts from this IP, please try again after 15 minutes.'
@@ -123,6 +121,11 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
+
+// Error handlers (must be AFTER all routes)
+const { errorHandler, notFound } = require('./middleware/errorHandler');
+app.use(notFound);  // 404 handler
+app.use(errorHandler);  // Global error handler
 
 const PORT = process.env.PORT || 5000;
 

@@ -3,6 +3,7 @@ const Worker = require('../models/Worker');
 const Booking = require('../models/Booking');
 const Category = require('../models/Category');
 const Review = require('../models/Review');
+const AuditLog = require('../models/AuditLog');
 
 // @desc    Get admin dashboard stats
 // @route   GET /api/admin/stats
@@ -114,6 +115,20 @@ const verifyWorker = async (req, res) => {
 
     await worker.save();
 
+    // Audit log
+    try {
+      await AuditLog.create({
+        actor: req.user?._id,
+        actorType: req.user?.userType || 'unknown',
+        action: 'worker.verified',
+        targetType: 'Worker',
+        targetId: worker._id.toString(),
+        meta: { status: 'approved' }
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
+
     res.json({
       success: true,
       message: 'Worker verified successfully',
@@ -145,6 +160,20 @@ const rejectWorker = async (req, res) => {
 
     await worker.save();
 
+    // Audit log
+    try {
+      await AuditLog.create({
+        actor: req.user?._id,
+        actorType: req.user?.userType || 'unknown',
+        action: 'worker.rejected',
+        targetType: 'Worker',
+        targetId: worker._id.toString(),
+        meta: { status: 'rejected', reason: reason || 'Not specified' }
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
+
     res.json({
       success: true,
       message: 'Worker rejected',
@@ -172,6 +201,20 @@ const toggleUserStatus = async (req, res) => {
 
     user.isActive = isActive;
     await user.save();
+
+    // Audit log
+    try {
+      await AuditLog.create({
+        actor: req.user?._id,
+        actorType: req.user?.userType || 'unknown',
+        action: 'user.status_toggled',
+        targetType: 'User',
+        targetId: user._id.toString(),
+        meta: { isActive }
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
 
     res.json({
       success: true,

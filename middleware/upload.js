@@ -7,7 +7,7 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'servicewala', // Folder name in Cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif'],
     transformation: [
       { width: 1000, height: 1000, crop: 'limit' }, // Max dimensions
       { quality: 'auto:good' } // Automatic quality optimization

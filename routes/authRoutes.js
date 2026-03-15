@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const crypto = require('crypto'); // ← ADD THIS
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const sendEmail = require('../utils/sendEmail'); 
 
 const validate = require('../middleware/validate');
@@ -10,26 +11,31 @@ const {
   loginValidation,
   registerWorkerValidation,
   forgotPasswordValidation,
-  resetPasswordValidation
+  resetPasswordValidation,
+  adminLoginValidation
 } = require('../validators/authValidators');
 
 // Import controllers
 const {
   registerUser,
   loginUser,
+  logoutUser,  // NEW - import logout
   getMe: getUserProfile,
   updateProfile: updateUserProfile
 } = require('../controllers/userAuthController');
 
+const { loginAdmin } = require('../controllers/adminAuthController');
+
 const {
   registerWorker,
   loginWorker,
+  logoutWorker,  // NEW - import logout
   getMe: getWorkerProfile,
   updateProfile: updateWorkerProfile,
   updateAvailability
 } = require('../controllers/workerAuthController');
 
-// UNIFIED PROFILE ROUTE - NEW!
+// UNIFIED PROFILE ROUTE
 router.get('/profile', protect, async (req, res) => {
   try {
     // Check if user or worker based on userType
@@ -43,20 +49,37 @@ router.get('/profile', protect, async (req, res) => {
   }
 });
 
+// UNIFIED LOGOUT ROUTE - NEW!
+router.post('/logout', protect, async (req, res) => {
+  try {
+    // Works for both user and worker - just clears cookie
+    if (req.user.userType === 'worker') {
+      return logoutWorker(req, res);
+    } else {
+      return logoutUser(req, res);
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // USER ROUTES
-router.post('/register',registerUserValidation, validate, registerUser);  // ← Changed from /user/register
+router.post('/register', registerUserValidation, validate, registerUser);
 router.post('/login', loginValidation, validate, loginUser);
+router.post('/user/logout', protect, logoutUser);  // NEW - specific user logout
+router.post('/admin/login', adminLoginValidation, validate, loginAdmin);
 router.get('/user/me', protect, getUserProfile);
 router.put('/user/profile', protect, updateUserProfile);
 
 // WORKER ROUTES
 router.post('/worker/register', registerWorkerValidation, validate, registerWorker);
 router.post('/worker/login', loginValidation, validate, loginWorker);
+router.post('/worker/logout', protect, logoutWorker);  // NEW - specific worker logout
 router.get('/worker/me', protect, getWorkerProfile);
 router.put('/worker/profile', protect, updateWorkerProfile);
 router.put('/worker/availability', protect, updateAvailability);
 
-// Favorite workers routes (at the end, before module.exports)
+// Favorite workers routes
 router.post('/favorites/:workerId', protect, async (req, res) => {
   try {
     const User = require('../models/User');
@@ -116,10 +139,22 @@ router.get('/favorites', protect, async (req, res) => {
   }
 });
 
+// Password Reset Rate Limiting
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: {
+    success: false,
+    message: 'Too many password reset attempts, please try again after 1 hour.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Password Reset Routes
 
 // @route   POST /api/auth/forgot-password
-router.post('/forgot-password', forgotPasswordValidation, validate, async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, forgotPasswordValidation, validate, async (req, res) => {
   try {
     const { phone } = req.body;
     const User = require('../models/User');
@@ -150,7 +185,8 @@ router.post('/forgot-password', forgotPasswordValidation, validate, async (req, 
     
     await user.save();
 
-    const resetUrl = `https://servicewala-frontend-1mdy.vercel.app/reset-password/${resetToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     const message = `
 You requested a password reset for ServiceWala.
@@ -193,7 +229,7 @@ If you didn't request this, please ignore this email.
 });
 
 // @route   PUT /api/auth/reset-password/:token
-router.put('/reset-password/:token', resetPasswordValidation, validate, async (req, res) => {
+router.put('/reset-password/:token', passwordResetLimiter, resetPasswordValidation, validate, async (req, res) => {
   try {
     const { password } = req.body;
     const User = require('../models/User');
@@ -231,6 +267,13 @@ router.put('/reset-password/:token', resetPasswordValidation, validate, async (r
       message: error.message
     });
   }
+});
+
+// ✅ TEST ROUTE - Error handler check karne ke liye
+router.get('/test-error', (req, res, next) => {
+  const error = new Error('Yeh ek test error hai!');
+  error.statusCode = 400;
+  next(error);
 });
 
 module.exports = router;

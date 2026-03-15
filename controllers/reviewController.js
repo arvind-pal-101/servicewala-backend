@@ -3,14 +3,14 @@ const Booking = require('../models/Booking');
 
 const createReview = async (req, res) => {
   try {
-    const { booking, worker, rating, reviewText } = req.body;
+    const { booking, worker, rating, reviewText, comment } = req.body;
 
     const review = await Review.create({
       booking,
       customer: req.user._id,
       worker,
       rating,
-      reviewText
+      reviewText: reviewText || comment
     });
 
     res.status(201).json({
@@ -54,8 +54,8 @@ const updateReview = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Review not found' });
     }
 
-    review.rating = req.body.rating || review.rating;
-    review.reviewText = req.body.reviewText || review.reviewText;
+    review.rating = req.body.rating ?? review.rating;
+    review.reviewText = req.body.reviewText || req.body.comment || review.reviewText;
     await review.save();
 
     res.json({ success: true, message: 'Review updated', data: review });

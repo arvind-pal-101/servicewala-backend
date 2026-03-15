@@ -6,47 +6,52 @@ const Worker = require('../models/Worker');
 const protect = async (req, res, next) => {
   let token;
 
-  // Check if token exists in header
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(' ')[1];
+  // Check for token in cookie (PREFERRED)
+  if (req.cookies.token) {
+    token = req.cookies.token;
+  }
+  // Fallback: Check in Authorization header (for backward compatibility during migration)
+  else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
 
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Check user role and get user data
-      if (decoded.role === 'worker') {
-        req.user = await Worker.findById(decoded.id).select('-password');
-        if (req.user) {
-          req.user.userType = 'worker';
-        }
-      } else {
-        req.user = await User.findById(decoded.id).select('-password');
-        if (req.user) {
-          req.user.userType = decoded.role || 'user';
-        }
-      }
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
-
-      next();
-    } catch (error) {
-      console.error('Auth error:', error.message);
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized, token failed'
-      });
-    }
-  } else {
+  if (!token) {
     return res.status(401).json({
       success: false,
       message: 'Not authorized, no token'
+    });
+  }
+
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check user role and get user data
+    if (decoded.role === 'worker') {
+      req.user = await Worker.findById(decoded.id).select('-password');
+      if (req.user) {
+        req.user.userType = 'worker';
+      }
+    } else {
+      req.user = await User.findById(decoded.id).select('-password');
+      if (req.user) {
+        req.user.userType = decoded.role || 'user';
+      }
+    }
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Auth error:', error.message);
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized, token failed'
     });
   }
 };
@@ -55,12 +60,17 @@ const protect = async (req, res, next) => {
 const optionalAuth = async (req, res, next) => {
   let token;
 
-  // Check if token exists in header
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(' ')[1];
+  // Check for token in cookie (PREFERRED)
+  if (req.cookies.token) {
+    token = req.cookies.token;
+  }
+  // Fallback: Check in Authorization header (for backward compatibility)
+  else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
 
+  if (token) {
+    try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

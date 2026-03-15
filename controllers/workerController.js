@@ -124,9 +124,66 @@ const verifyWorker = async (req, res) => {
   }
 };
 
+// Add this function after verifyWorker but before module.exports
+const updateAvailability = async (req, res) => {
+  try {
+    // Check if body exists
+    if (!req.body) {
+      return res.status(400).json({
+        success: false,
+        message: 'Request body is missing'
+      });
+    }
+
+    const { isAvailable } = req.body;
+
+    if (isAvailable === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'isAvailable field is required'
+      });
+    }
+
+    // Ensure user is worker
+    if (req.user.userType !== 'worker') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: only workers can update availability'
+      });
+    }
+
+    // Worker khud ka profile update kar raha hai (protect middleware se req.user mein worker ka ID milega)
+    const worker = await Worker.findById(req.user._id);
+    
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Worker not found'
+      });
+    }
+
+    // Update availability
+    worker.availability.isAvailable = isAvailable;
+    await worker.save();
+
+    res.json({
+      success: true,
+      message: 'Availability updated successfully',
+      data: { isAvailable: worker.availability.isAvailable }
+    });
+  } catch (error) {
+    console.error('Update availability error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   searchWorkers,
   getWorkerById,
   getAllWorkers,
-  verifyWorker
+  verifyWorker,
+  updateAvailability
 };

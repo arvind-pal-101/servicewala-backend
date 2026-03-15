@@ -1,5 +1,6 @@
 const Worker = require('../models/Worker');
 const generateToken = require('../utils/generateToken');
+const { setCookie, clearCookie } = require('../utils/setCookie');
 
 // @desc    Register new worker
 // @route   POST /api/auth/worker/register
@@ -53,6 +54,12 @@ const registerWorker = async (req, res) => {
     });
 
     if (worker) {
+      // Generate token
+      const token = generateToken(worker._id, 'worker');
+      
+      // Set HTTP-only cookie
+      setCookie(res, token);
+      
       res.status(201).json({
         success: true,
         message: 'Worker registered successfully. Waiting for admin approval.',
@@ -62,8 +69,8 @@ const registerWorker = async (req, res) => {
           phone: worker.phone,
           email: worker.email,
           category: worker.category,
-          verification: worker.verification,
-          token: generateToken(worker._id, 'worker')
+          verification: worker.verification
+          // No token in response - it's in cookie!
         }
       });
     } else {
@@ -73,7 +80,7 @@ const registerWorker = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error(error);
+    console.error('Worker registration error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -126,6 +133,12 @@ const loginWorker = async (req, res) => {
       });
     }
 
+    // Generate token
+    const token = generateToken(worker._id, 'worker');
+    
+    // Set HTTP-only cookie
+    setCookie(res, token);
+
     res.json({
       success: true,
       message: 'Login successful',
@@ -141,12 +154,32 @@ const loginWorker = async (req, res) => {
         profilePic: worker.profilePic,
         verification: worker.verification,
         ratings: worker.ratings,
-        availability: worker.availability,
-        token: generateToken(worker._id, 'worker')
+        availability: worker.availability
+        // No token in response - it's in cookie!
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error('Worker login error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Logout worker
+// @route   POST /api/auth/worker/logout
+// @access  Private
+const logoutWorker = async (req, res) => {
+  try {
+    // Clear cookie
+    clearCookie(res);
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message
@@ -221,14 +254,7 @@ const updateProfile = async (req, res) => {
 // @access  Private (Worker)
 const updateAvailability = async (req, res) => {
   try {
-    console.log('=== UPDATE AVAILABILITY CALLED ===');
-    console.log('req.user:', req.user);
-    console.log('req.user._id:', req.user?._id);
-    console.log('req.user.userType:', req.user?.userType);
-    console.log('req.body:', req.body);
-    
     if (!req.user || !req.user._id) {
-      console.log('ERROR: req.user not found!');
       return res.status(401).json({
         success: false,
         message: 'User not authenticated'
@@ -236,32 +262,24 @@ const updateAvailability = async (req, res) => {
     }
 
     const worker = await Worker.findById(req.user._id);
-    
-    console.log('Worker found:', worker ? `YES - ${worker.name}` : 'NO');
 
     if (!worker) {
-      console.log('ERROR: Worker not found in DB for ID:', req.user._id);
       return res.status(404).json({
         success: false,
         message: 'Worker not found'
       });
     }
-
-    console.log('Current availability:', worker.availability);
     
     // Update availability
     if (req.body.isAvailable !== undefined) {
       worker.availability.isAvailable = req.body.isAvailable;
-      console.log('Setting isAvailable to:', req.body.isAvailable);
     }
     
     if (req.body.schedule) {
       worker.availability.schedule = req.body.schedule;
-      console.log('Updating schedule');
     }
 
     const updatedWorker = await worker.save();
-    console.log('Worker saved! New availability:', updatedWorker.availability);
 
     res.json({
       success: true,
@@ -271,9 +289,7 @@ const updateAvailability = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('=== AVAILABILITY UPDATE ERROR ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('Availability update error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -284,6 +300,7 @@ const updateAvailability = async (req, res) => {
 module.exports = {
   registerWorker,
   loginWorker,
+  logoutWorker,  // NEW - export logout
   getMe,
   updateProfile,
   updateAvailability

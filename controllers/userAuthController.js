@@ -1,8 +1,9 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const { setCookie, clearCookie } = require('../utils/setCookie');
 
 // @desc    Register new user
-// @route   POST /api/auth/user/register
+// @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
   try {
@@ -36,6 +37,12 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
+      // Generate token
+      const token = generateToken(user._id, 'user');
+      
+      // Set HTTP-only cookie
+      setCookie(res, token);
+      
       res.status(201).json({
         success: true,
         message: 'User registered successfully',
@@ -45,8 +52,8 @@ const registerUser = async (req, res) => {
           phone: user.phone,
           email: user.email,
           location: user.location,
-          role: user.role,
-          token: generateToken(user._id, 'user')
+          role: user.role
+          // No token in response - it's in cookie!
         }
       });
     } else {
@@ -56,7 +63,7 @@ const registerUser = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error(error);
+    console.error('User registration error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -65,7 +72,7 @@ const registerUser = async (req, res) => {
 };
 
 // @desc    Login user
-// @route   POST /api/auth/user/login
+// @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res) => {
   try {
@@ -107,6 +114,12 @@ const loginUser = async (req, res) => {
       });
     }
 
+    // Generate token
+    const token = generateToken(user._id, 'user');
+    
+    // Set HTTP-only cookie
+    setCookie(res, token);
+
     res.json({
       success: true,
       message: 'Login successful',
@@ -117,12 +130,32 @@ const loginUser = async (req, res) => {
         email: user.email,
         location: user.location,
         role: user.role,
-        profilePic: user.profilePic,
-        token: generateToken(user._id, 'user')
+        profilePic: user.profilePic
+        // No token in response - it's in cookie!
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error('User login error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Logout user
+// @route   POST /api/auth/logout
+// @access  Private
+const logoutUser = async (req, res) => {
+  try {
+    // Clear cookie
+    clearCookie(res);
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message
@@ -131,7 +164,7 @@ const loginUser = async (req, res) => {
 };
 
 // @desc    Get current user profile
-// @route   GET /api/auth/user/me
+// @route   GET /api/auth/me
 // @access  Private
 const getMe = async (req, res) => {
   try {
@@ -150,7 +183,7 @@ const getMe = async (req, res) => {
 };
 
 // @desc    Update user profile
-// @route   PUT /api/auth/user/profile
+// @route   PUT /api/auth/profile
 // @access  Private
 const updateProfile = async (req, res) => {
   try {
@@ -198,6 +231,7 @@ const updateProfile = async (req, res) => {
 module.exports = {
   registerUser,
   loginUser,
+  logoutUser,  // NEW - export logout
   getMe,
   updateProfile
 };

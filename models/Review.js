@@ -56,7 +56,7 @@ reviewSchema.post('save', async function() {
 
   if (stats.length > 0) {
     await Worker.findByIdAndUpdate(this.worker, {
-      'ratings.average': stats[0].avgRating.toFixed(1),
+      'ratings.average': parseFloat(stats[0].avgRating.toFixed(1)),
       'ratings.count': stats[0].numRatings
     });
   }

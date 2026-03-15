@@ -5,12 +5,15 @@ const {
   searchWorkers,
   getWorkerById,
   getAllWorkers,
-  verifyWorker
+  verifyWorker,
+  updateAvailability   
 } = require('../controllers/workerController');
 
 router.get('/search', searchWorkers);
 router.get('/:id', getWorkerById);
 router.get('/', protect, admin, getAllWorkers);
 router.put('/:id/verify', protect, admin, verifyWorker);
+router.put('/availability', protect, updateAvailability);
+
 
 module.exports = router;

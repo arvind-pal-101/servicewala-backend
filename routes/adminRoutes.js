@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { protect, admin } = require('../middleware/auth');
+const validate = require('../middleware/validate'); // ← ADDED
+const {
+  verifyWorkerValidation,
+  rejectWorkerValidation,
+  toggleUserStatusValidation
+} = require('../validators/adminValidators'); // ← ADDED
+
 const {
   getStats,
   getAllUsers,
@@ -12,17 +19,40 @@ const {
   getAnalytics
 } = require('../controllers/adminController');
 
-// Note: In production, add proper admin authentication middleware
-// For now, we'll use the regular protect middleware
-// You can create a separate isAdmin middleware later
+// All admin routes are protected and require admin role
+router.get('/stats', protect, admin, getStats);
+router.get('/users', protect, admin, getAllUsers);
+router.get('/workers', protect, admin, getAllWorkers);
+router.get('/bookings', protect, admin, getAllBookings);
+router.get('/analytics', protect, admin, getAnalytics);
 
-router.get('/stats', getStats);
-router.get('/users', getAllUsers);
-router.get('/workers', getAllWorkers);
-router.get('/bookings', getAllBookings);
-router.get('/analytics', getAnalytics);
-router.put('/workers/:id/verify', verifyWorker);
-router.put('/workers/:id/reject', rejectWorker);
-router.put('/users/:id/toggle-status', toggleUserStatus);
+// Worker verification with validation
+router.put(
+  '/workers/:id/verify',
+  protect,
+  admin,
+  verifyWorkerValidation,   // ← ADDED
+  validate,                 // ← ADDED
+  verifyWorker
+);
+
+router.put(
+  '/workers/:id/reject',
+  protect,
+  admin,
+  rejectWorkerValidation,
+  validate,
+  rejectWorker
+);
+
+// Toggle user status with validation
+router.put(
+  '/users/:id/toggle-status',
+  protect,
+  admin,
+  toggleUserStatusValidation, // ← ADDED
+  validate,                   // ← ADDED
+  toggleUserStatus
+);
 
 module.exports = router;

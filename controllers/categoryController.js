@@ -87,9 +87,14 @@ const updateCategory = async (req, res) => {
       });
     }
     
+    const { name, description, icon } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (icon !== undefined) updateData.icon = icon;
     const updatedCategory = await Category.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
     

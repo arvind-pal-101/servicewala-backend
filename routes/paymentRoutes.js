@@ -6,12 +6,17 @@ const {
   getPaymentDetails,
   refundPayment
 } = require('../controllers/paymentController');
-const { protect } = require('../middleware/auth');
+const { protect, admin } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const { initiatePaymentValidation, verifyPaymentValidation } = require('../validators/paymentValidators');
 
-// All routes require authentication
-router.post('/create-order', protect, createOrder);
-router.post('/verify', protect, verifyPayment);
+router.post('/initiate', protect, initiatePaymentValidation, validate, createOrder);
+
+router.post('/create-order', protect, initiatePaymentValidation, validate, createOrder);
+router.post('/verify', protect, verifyPaymentValidation, validate, verifyPayment);
 router.get('/:bookingId', protect, getPaymentDetails);
-router.post('/refund/:bookingId', protect, refundPayment);
+
+// Refunds are admin-only
+router.post('/refund/:bookingId', protect, admin, refundPayment);
 
 module.exports = router;

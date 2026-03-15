@@ -1,6 +1,8 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
+const sendEmail = require('../utils/sendEmail');
+const AuditLog = require('../models/AuditLog');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -23,7 +25,7 @@ exports.createOrder = async (req, res) => {
     }
 
     // Check if customer owns this booking
-    if (booking.customer.toString() !== req.user.id) {
+    if (booking.customer.toString() !== (req.user._id || req.user.id).toString()) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized access'
@@ -80,15 +82,42 @@ exports.verifyPayment = async (req, res) => {
       .update(sign.toString())
       .digest('hex');
 
+    const requesterId = (req.user && (req.user._id || req.user.id)) ? (req.user._id || req.user.id).toString() : null;
+    const requesterType = req.user?.userType || 'unknown';
+
     // Verify signature
     if (razorpay_signature === expectedSign) {
       // Payment verified successfully
-      const booking = await Booking.findById(bookingId);
+      const booking = await Booking.findById(bookingId).populate('customer', 'name email');
       
       if (!booking) {
         return res.status(404).json({
           success: false,
           message: 'Booking not found'
+        });
+      }
+
+      // Authorization: only booking owner or admin can verify payment
+      const bookingCustomerId = booking.customer?._id ? booking.customer._id.toString() : booking.customer?.toString();
+      const isOwner = requesterId && bookingCustomerId && requesterId === bookingCustomerId;
+      const isAdmin = requesterType === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized access'
+        });
+      }
+
+      // Idempotency: if already completed, return success
+      if (booking.payment?.status === 'completed' && booking.payment?.razorpayPaymentId === razorpay_payment_id) {
+        return res.status(200).json({
+          success: true,
+          message: 'Payment already verified',
+          data: {
+            bookingId: booking._id,
+            paymentId: razorpay_payment_id
+          }
         });
       }
 
@@ -102,6 +131,50 @@ exports.verifyPayment = async (req, res) => {
       };
 
       await booking.save();
+
+      // Audit log
+      try {
+        await AuditLog.create({
+          actor: req.user?._id,
+          actorType: requesterType,
+          action: 'payment.verified',
+          targetType: 'Booking',
+          targetId: booking._id.toString(),
+          meta: {
+            bookingId: booking.bookingId,
+            razorpayOrderId: razorpay_order_id,
+            razorpayPaymentId: razorpay_payment_id
+          }
+        });
+      } catch (auditError) {
+        console.error('Audit log error:', auditError.message);
+      }
+
+      // Send payment confirmation email if customer has email
+      try {
+        const customerEmail = booking.customer?.email;
+        if (customerEmail) {
+          const message = `
+Hello ${booking.customer.name || 'Customer'},
+
+We have successfully received your online payment for your ServiceWala booking.
+
+Booking ID: ${booking.bookingId}
+Payment ID: ${razorpay_payment_id}
+Amount: This will be reflected in your booking details.
+
+Thank you for trusting ServiceWala.
+`.trim();
+
+          await sendEmail({
+            email: customerEmail,
+            subject: 'ServiceWala - Payment Successful',
+            message
+          });
+        }
+      } catch (emailError) {
+        console.error('Payment email error:', emailError.message);
+      }
 
       res.status(200).json({
         success: true,
@@ -148,9 +221,10 @@ exports.getPaymentDetails = async (req, res) => {
     }
 
     // Check access
+    const userId = (req.user._id || req.user.id).toString();
     if (
-      booking.customer._id.toString() !== req.user.id &&
-      booking.worker._id.toString() !== req.user.id
+      (booking.customer?._id || booking.customer)?.toString() !== userId &&
+      (booking.worker?._id || booking.worker)?.toString() !== userId
     ) {
       return res.status(403).json({
         success: false,
@@ -224,6 +298,25 @@ exports.refundPayment = async (req, res) => {
     booking.payment.refundAmount = amount;
 
     await booking.save();
+
+    // Audit log
+    try {
+      await AuditLog.create({
+        actor: req.user?._id,
+        actorType: req.user?.userType || 'unknown',
+        action: 'payment.refunded',
+        targetType: 'Booking',
+        targetId: booking._id.toString(),
+        meta: {
+          bookingId: booking.bookingId,
+          refundId: refund.id,
+          amount,
+          reason: reason || 'Service cancelled'
+        }
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
 
     res.status(200).json({
       success: true,

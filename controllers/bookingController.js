@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Worker = require('../models/Worker');
+const sendEmail = require('../utils/sendEmail');
 
 // Create a new booking
 exports.createBooking = async (req, res) => {
@@ -41,13 +42,27 @@ exports.createBooking = async (req, res) => {
       console.log('Logged-in user booking. Customer ID:', customerId);
     } 
     else if (guestCustomer && guestCustomer.name && guestCustomer.phone) {
-      // Guest booking - create temporary customer object
-      customerId = {
-        name: guestCustomer.name,
-        phone: guestCustomer.phone,
-        email: guestCustomer.email || ''
-      };
-      console.log('Guest booking. Customer:', customerId);
+      // Guest booking - ensure a proper User document exists
+      console.log('Guest booking. Guest data:', guestCustomer);
+
+      // Try to find existing user by phone
+      let guestUser = await User.findOne({ phone: guestCustomer.phone });
+
+      if (!guestUser) {
+        // Create a minimal guest user with random password
+        const randomPassword = Math.random().toString(36).slice(-12) + Date.now().toString(36);
+
+        guestUser = await User.create({
+          name: guestCustomer.name,
+          phone: guestCustomer.phone,
+          email: guestCustomer.email || '',
+          password: randomPassword,
+          isGuest: true
+        });
+      }
+
+      customerId = guestUser._id;
+      console.log('Guest booking mapped to User ID:', customerId);
     } 
     else {
       return res.status(400).json({ 
@@ -72,9 +87,40 @@ exports.createBooking = async (req, res) => {
     });
 
     // Populate references
-    await booking.populate('worker category');
+    await booking.populate('worker category customer');
 
     console.log('Booking created successfully:', booking._id);
+
+    // Send confirmation email to customer if email exists
+    try {
+      const customerEmail = booking.customer?.email;
+      if (customerEmail) {
+        const bookedDate = new Date(booking.scheduledDate).toLocaleDateString('en-IN');
+        const message = `
+Hello ${booking.customer.name || 'Customer'},
+
+Your booking has been created successfully on ServiceWala.
+
+Booking ID: ${booking.bookingId}
+Service: ${booking.category?.name || 'Service'}
+Worker: ${booking.worker?.name || ''}
+Date: ${bookedDate}
+Time Slot: ${booking.scheduledTime}
+
+Our partner will contact you soon to confirm the details.
+
+Thank you for using ServiceWala.
+`.trim();
+
+        await sendEmail({
+          email: customerEmail,
+          subject: 'ServiceWala - Booking Confirmed',
+          message
+        });
+      }
+    } catch (emailError) {
+      console.error('Booking email error:', emailError.message);
+    }
 
     res.status(201).json({
       success: true,

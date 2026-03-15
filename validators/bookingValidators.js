@@ -1,11 +1,12 @@
 const { body } = require('express-validator');
 
 exports.createBookingValidation = [
-  body('worker')
+  // Match frontend/body field names: workerId, categoryId
+  body('workerId')
     .notEmpty().withMessage('Worker ID is required')
     .isMongoId().withMessage('Invalid worker ID'),
   
-  body('category')
+  body('categoryId')
     .notEmpty().withMessage('Category is required')
     .isMongoId().withMessage('Invalid category ID'),
   
@@ -15,7 +16,8 @@ exports.createBookingValidation = [
   
   body('scheduledTime')
     .notEmpty().withMessage('Time is required')
-    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage('Invalid time format (HH:MM)'),
+    .isIn(['morning', 'afternoon', 'evening'])
+    .withMessage('Invalid time slot'),
   
   body('serviceDetails.problemDescription')
     .trim()
@@ -35,6 +37,13 @@ exports.createBookingValidation = [
   body('serviceDetails.serviceAddress.pincode')
     .trim()
     .matches(/^\d{6}$/).withMessage('Invalid pincode'),
+];
+
+exports.completeBookingValidation = [
+  body('finalAmount')
+    .optional()
+    .isNumeric().withMessage('Final amount must be a number')
+    .isFloat({ min: 0, max: 100000 }).withMessage('Amount must be between 0 and 100,000')
 ];
 
 exports.updateBookingStatusValidation = [
