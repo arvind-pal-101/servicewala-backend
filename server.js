@@ -18,24 +18,30 @@ const app = express();
 // Trust proxy for Render
 app.set('trust proxy', 1);
 
-// CORS
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:3000'];
+// CORS – allow Vercel (all *.vercel.app) + explicit list
+const allowedOriginsRaw = process.env.ALLOWED_ORIGINS || 'http://localhost:3000';
+const allowedOrigins = allowedOriginsRaw.split(',').map(o => o.trim()).filter(Boolean);
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.indexOf(origin) !== -1) return true;
+  // Allow any Vercel deployment (production + preview)
+  if (origin.endsWith('.vercel.app')) return true;
+  if (process.env.NODE_ENV !== 'production') return true;
+  return false;
+}
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body parser
