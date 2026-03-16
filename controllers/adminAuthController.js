@@ -1,9 +1,7 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const { setCookie } = require('../utils/setCookie');
 
-// @desc    Admin login (JWT)
-// @route   POST /api/auth/admin/login
-// @access  Public
 const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -32,19 +30,11 @@ const loginAdmin = async (req, res) => {
       });
     }
 
-    // Generate token
     const token = generateToken(adminUser._id, 'admin');
 
-    // ✅ SET COOKIE (function ke andar yahan add karo)
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      encode: String
-    });
+    // setCookie use karo — same as user/worker
+    setCookie(res, token);
 
-    // Response with token (optional)
     return res.json({
       success: true,
       message: 'Admin login successful',
@@ -52,8 +42,7 @@ const loginAdmin = async (req, res) => {
         _id: adminUser._id,
         name: adminUser.name,
         email: adminUser.email,
-        role: adminUser.role,
-        token   // token body mein bhi bhej sakte ho (optional)
+        role: adminUser.role
       }
     });
   } catch (error) {
