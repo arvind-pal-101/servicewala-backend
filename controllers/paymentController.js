@@ -121,16 +121,57 @@ exports.verifyPayment = async (req, res) => {
         });
       }
 
-      // Update booking with payment details
-      booking.payment = {
-        status: 'completed',
-        method: 'online',
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        paidAt: new Date()
-      };
+      // Commission calculate karo
+const { calculateCommission } = require('./commissionController');
+const Transaction = require('../models/Transaction');
+const amount = booking.pricing?.finalAmount || 0;
+const commission = calculateCommission(amount);
 
-      await booking.save();
+// Update booking with payment + commission details
+booking.payment = {
+  status: 'completed',
+  method: 'online',
+  razorpayOrderId: razorpay_order_id,
+  razorpayPaymentId: razorpay_payment_id,
+  paidAt: new Date(),
+  commissionRate: commission.rate,
+  commissionAmount: commission.amount,
+  commissionStatus: commission.enabled ? 'collected' : 'not_applicable',
+  commissionPaidAt: commission.enabled ? new Date() : undefined
+};
+
+// Pricing update
+booking.pricing.platformCommission = commission.amount;
+booking.pricing.workerEarning = amount - commission.amount;
+
+await booking.save();
+
+// Transaction record
+if (amount > 0) {
+  await Transaction.create({
+    booking: booking._id,
+    customer: booking.customer._id || booking.customer,
+    worker: booking.worker,
+    amount,
+    method: 'online',
+    commissionRate: commission.rate,
+    commissionAmount: commission.amount,
+    commissionStatus: commission.enabled ? 'collected' : 'not_applicable',
+    commissionPaidAt: commission.enabled ? new Date() : undefined
+  });
+}
+
+// Worker earnings update
+if (amount > 0) {
+  const Worker = require('../models/Worker');
+  await Worker.findByIdAndUpdate(booking.worker, {
+    $inc: {
+      'earnings.total': amount - commission.amount,
+      'earnings.thisMonth': amount - commission.amount,
+      'commission.totalCollected': commission.amount
+    }
+  });
+}
 
       // Audit log
       try {

@@ -74,13 +74,19 @@ const bookingSchema = new mongoose.Schema({
     refundId: String,
     refundAmount: Number,
     paidAt: Date,
-    refundedAt: Date
+    refundedAt: Date,
+    // Commission fields
+    commissionRate: { type: Number, default: 0 },
+    commissionAmount: { type: Number, default: 0 },
+    commissionStatus: {
+      type: String,
+      enum: ['not_applicable', 'pending', 'collected'],
+      default: 'not_applicable'
+    },
+    commissionPaidAt: Date
   },
   timeline: {
-    bookedAt: {
-      type: Date,
-      default: Date.now
-    },
+    bookedAt: { type: Date, default: Date.now },
     acceptedAt: Date,
     rejectedAt: Date,
     startedAt: Date,
@@ -114,7 +120,6 @@ const bookingSchema = new mongoose.Schema({
   }
 });
 
-// Auto-generate booking ID
 bookingSchema.pre('save', async function() {
   if (!this.bookingId) {
     const count = await mongoose.model('Booking').countDocuments();

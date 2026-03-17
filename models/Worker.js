@@ -156,6 +156,12 @@ const workerSchema = new mongoose.Schema({
       default: 0
     }
   },
+  commission: {
+    totalPending: { type: Number, default: 0 },
+    totalCollected: { type: Number, default: 0 },
+    pendingCount: { type: Number, default: 0 },
+    isBlocked: { type: Boolean, default: false }
+  },
   isActive: {
     type: Boolean,
     default: true

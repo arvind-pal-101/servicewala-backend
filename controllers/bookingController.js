@@ -400,49 +400,94 @@ exports.cancelBooking = async (req, res) => {
 };
 
 // Confirm cash payment received (worker only)
+// Confirm cash payment received (worker only)
 exports.confirmCashPayment = async (req, res) => {
   try {
-    console.log('=== CONFIRM CASH PAYMENT ===');
-    console.log('User:', req.user);
-    console.log('Booking ID:', req.params.id);
-    
+    const { finalAmount } = req.body;
     const booking = await Booking.findById(req.params.id);
-    
+
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    console.log('Booking worker:', booking.worker);
-    console.log('req.user._id:', req.user._id);
-
-    // Only worker can confirm cash
     if (booking.worker.toString() !== req.user._id.toString()) {
-      console.log('ERROR: Not authorized - different worker');
       return res.status(403).json({ success: false, message: 'Only worker can confirm cash payment' });
     }
 
-    // Only for completed bookings
     if (booking.status !== 'completed') {
-      console.log('ERROR: Booking not completed, status:', booking.status);
       return res.status(400).json({ success: false, message: 'Service must be completed first' });
     }
 
-    // Update payment status
+    // Amount save karo
+    const amount = finalAmount || booking.pricing?.finalAmount || 0;
+    if (amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Please provide valid amount' });
+    }
+
+    // Commission calculate karo
+    const { calculateCommission } = require('./commissionController');
+    const commission = calculateCommission(amount);
+    const Transaction = require('../models/Transaction');
+
+    // Booking update
+    booking.pricing.finalAmount = amount;
+    booking.pricing.platformCommission = commission.amount;
+    booking.pricing.workerEarning = amount - commission.amount;
     booking.payment.status = 'completed';
     booking.payment.method = 'cash';
-    booking.payment.paidAt = Date.now();
+    booking.payment.paidAt = new Date();
+    booking.payment.commissionRate = commission.rate;
+    booking.payment.commissionAmount = commission.amount;
+    booking.payment.commissionStatus = commission.enabled ? 'pending' : 'not_applicable';
 
     await booking.save();
-    
-    console.log('Cash payment confirmed successfully!');
+
+    // Transaction record banao
+    await Transaction.create({
+      booking: booking._id,
+      customer: booking.customer,
+      worker: booking.worker,
+      amount,
+      method: 'cash',
+      commissionRate: commission.rate,
+      commissionAmount: commission.amount,
+      commissionStatus: commission.enabled ? 'pending' : 'not_applicable'
+    });
+
+    // Worker commission update
+    if (commission.enabled && commission.amount > 0) {
+      const Worker = require('../models/Worker');
+      const worker = await Worker.findById(req.user._id);
+
+      worker.commission = worker.commission || {};
+      worker.commission.totalPending = (worker.commission.totalPending || 0) + commission.amount;
+      worker.commission.pendingCount = (worker.commission.pendingCount || 0) + 1;
+
+      // 3 se zyada pending → block
+      if (worker.commission.pendingCount > 3) {
+        worker.commission.isBlocked = true;
+      }
+
+      // Earnings update
+      worker.earnings = worker.earnings || {};
+      worker.earnings.total = (worker.earnings.total || 0) + (amount - commission.amount);
+      worker.earnings.thisMonth = (worker.earnings.thisMonth || 0) + (amount - commission.amount);
+
+      await worker.save();
+    }
 
     res.status(200).json({
       success: true,
       message: 'Cash payment confirmed successfully',
-      data: booking
+      data: {
+        amount,
+        commissionAmount: commission.amount,
+        workerEarning: amount - commission.amount,
+        commissionEnabled: commission.enabled
+      }
     });
   } catch (error) {
     console.error('Error confirming cash payment:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Something went wrong' });
   }
 };
