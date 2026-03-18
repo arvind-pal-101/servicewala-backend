@@ -209,7 +209,7 @@ Thank you for trusting ServiceWala.
 
           await sendEmail({
             email: customerEmail,
-            subject: 'ServiceWala - Payment Successful',
+            subject: 'ServiceBabu - Payment Successful',
             message
           });
         }
