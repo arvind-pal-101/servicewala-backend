@@ -2,6 +2,7 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Worker = require('../models/Worker');
 const sendEmail = require('../utils/sendEmail');
+const emailTemplates = require('../utils/emailTemplates');  // ← NEW
 
 // Create a new booking
 exports.createBooking = async (req, res) => {
@@ -117,9 +118,25 @@ Thank you for using ServiceWala.
           subject: 'ServiceWala - Booking Confirmed',
           message
         });
+        console.log('✅ Customer confirmation email sent to:', customerEmail);
       }
     } catch (emailError) {
-      console.error('Booking email error:', emailError.message);
+      console.error('Booking email error (customer):', emailError.message);
+    }
+
+    // 🔔 NEW: Send notification email to worker
+    try {
+      const workerEmail = booking.worker?.email;
+      if (workerEmail) {
+        await sendEmail({
+          email: workerEmail,
+          subject: '🔔 New Booking Request - ServiceBabu',
+          html: emailTemplates.newBookingTemplate(booking)
+        });
+        console.log('✅ Worker notification email sent to:', workerEmail);
+      }
+    } catch (emailError) {
+      console.error('Worker notification email error:', emailError.message);
     }
 
     res.status(201).json({
@@ -227,6 +244,24 @@ exports.acceptBooking = async (req, res) => {
 
     await booking.save();
 
+    // Populate for email
+    await booking.populate('customer worker category');
+
+    // 🔔 NEW: Send notification email to customer
+    try {
+      const customerEmail = booking.customer?.email;
+      if (customerEmail) {
+        await sendEmail({
+          email: customerEmail,
+          subject: '✅ Booking Confirmed - ServiceBabu',
+          html: emailTemplates.bookingAcceptedTemplate(booking)
+        });
+        console.log('✅ Acceptance email sent to customer:', customerEmail);
+      }
+    } catch (emailError) {
+      console.error('Acceptance email error:', emailError.message);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Booking accepted successfully',
@@ -263,6 +298,24 @@ exports.rejectBooking = async (req, res) => {
     booking.status = 'rejected';
 
     await booking.save();
+
+    // Populate for email
+    await booking.populate('customer worker category');
+
+    // 🔔 NEW: Send notification email to customer
+    try {
+      const customerEmail = booking.customer?.email;
+      if (customerEmail) {
+        await sendEmail({
+          email: customerEmail,
+          subject: '❌ Booking Not Available - ServiceBabu',
+          html: emailTemplates.bookingRejectedTemplate(booking)
+        });
+        console.log('✅ Rejection email sent to customer:', customerEmail);
+      }
+    } catch (emailError) {
+      console.error('Rejection email error:', emailError.message);
+    }
 
     res.status(200).json({
       success: true,
@@ -302,6 +355,24 @@ exports.startService = async (req, res) => {
 
     await booking.save();
 
+    // Populate for email
+    await booking.populate('customer worker category');
+
+    // 🔔 NEW: Send notification email to customer
+    try {
+      const customerEmail = booking.customer?.email;
+      if (customerEmail) {
+        await sendEmail({
+          email: customerEmail,
+          subject: '🚀 Service Started - ServiceBabu',
+          html: emailTemplates.serviceStartedTemplate(booking)
+        });
+        console.log('✅ Service started email sent to customer:', customerEmail);
+      }
+    } catch (emailError) {
+      console.error('Service started email error:', emailError.message);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Service started successfully',
@@ -337,13 +408,39 @@ exports.completeBooking = async (req, res) => {
     }
 
     booking.status = 'completed';
-    booking.timeline.completedAt = Date.now();
-    
-    if (finalAmount) {
-      booking.pricing.finalAmount = finalAmount;
-    }
+booking.timeline.completedAt = Date.now();
 
-    await booking.save();
+if (finalAmount) {
+  booking.pricing.finalAmount = finalAmount;
+}
+
+// Initialize payment if not already set
+if (!booking.payment || !booking.payment.method) {
+  booking.payment = {
+    method: 'cash',  // Default to cash
+    status: 'pending'
+  };
+}
+
+await booking.save();
+
+    // Populate for email
+    await booking.populate('customer worker category');
+
+    // 🔔 NEW: Send notification email to customer
+    try {
+      const customerEmail = booking.customer?.email;
+      if (customerEmail) {
+        await sendEmail({
+          email: customerEmail,
+          subject: '✅ Service Completed - ServiceBabu',
+          html: emailTemplates.serviceCompletedTemplate(booking)
+        });
+        console.log('✅ Service completed email sent to customer:', customerEmail);
+      }
+    } catch (emailError) {
+      console.error('Service completed email error:', emailError.message);
+    }
 
     res.status(200).json({
       success: true,
@@ -399,7 +496,6 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// Confirm cash payment received (worker only)
 // Confirm cash payment received (worker only)
 exports.confirmCashPayment = async (req, res) => {
   try {

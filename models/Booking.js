@@ -75,6 +75,20 @@ const bookingSchema = new mongoose.Schema({
     refundAmount: Number,
     paidAt: Date,
     refundedAt: Date,
+  // Worker Payout Tracking - NEW!
+  workerPayoutStatus: {
+    type: String,
+    enum: ['pending', 'paid'],
+    default: 'pending'
+  },
+  workerPaidAt: Date,  // When admin paid the worker
+  workerPayoutMethod: {
+    type: String,
+    enum: ['upi', 'bank_transfer', 'cash'],
+    default: 'upi'
+  },
+  workerPayoutReference: String,  // UPI transaction ID or reference
+  // Commission fields
     // Commission fields
     commissionRate: { type: Number, default: 0 },
     commissionAmount: { type: Number, default: 0 },

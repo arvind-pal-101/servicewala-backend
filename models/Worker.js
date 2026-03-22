@@ -15,7 +15,8 @@ const workerSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    sparse: true,
+    required: [true, 'Please provide email'],  // ← REQUIRED!
+    unique: true,  // ← UNIQUE!
     lowercase: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please add a valid email']
   },
@@ -147,15 +148,27 @@ const workerSchema = new mongoose.Schema({
     default: 0
   },
   earnings: {
-    total: {
-      type: Number,
-      default: 0
-    },
-    thisMonth: {
-      type: Number,
-      default: 0
-    }
+  total: {
+    type: Number,
+    default: 0
   },
+  thisMonth: {
+    type: Number,
+    default: 0
+  },
+  pending: {  // ← NEW: Amount waiting to be paid to worker
+    type: Number,
+    default: 0
+  },
+  paid: {  // ← NEW: Total amount paid to worker
+    type: Number,
+    default: 0
+  },
+  lastPayoutDate: {  // ← NEW: When was last payment made
+    type: Date,
+    default: null
+  }
+},
   commission: {
     totalPending: { type: Number, default: 0 },
     totalCollected: { type: Number, default: 0 },

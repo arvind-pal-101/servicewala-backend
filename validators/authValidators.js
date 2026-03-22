@@ -14,8 +14,8 @@ exports.registerUserValidation = [
     .matches(/^[6-9]\d{9}$/).withMessage('Invalid Indian phone number'),
   
   body('email')
-    .optional()
     .trim()
+    .notEmpty().withMessage('Email is required')  // ← REQUIRED!
     .isEmail().withMessage('Invalid email address')
     .normalizeEmail(),
   
@@ -53,8 +53,8 @@ exports.registerWorkerValidation = [
     .matches(/^[6-9]\d{9}$/).withMessage('Invalid Indian phone number'),
   
   body('email')
-    .optional()
     .trim()
+    .notEmpty().withMessage('Email is required')  // ← REQUIRED!
     .isEmail().withMessage('Invalid email address')
     .normalizeEmail(),
   
@@ -76,11 +76,21 @@ exports.registerWorkerValidation = [
 ];
 
 // Forgot password validation
+// Forgot password validation
 exports.forgotPasswordValidation = [
-  body('phone')
+  body('identifier')  // ← CHANGED from 'phone' to 'identifier'
     .trim()
-    .notEmpty().withMessage('Phone number is required')
-    .matches(/^[6-9]\d{9}$/).withMessage('Invalid phone number'),
+    .notEmpty().withMessage('Phone number or email is required')
+    .custom((value) => {
+      // Check if it's a valid phone OR email
+      const isPhone = /^[6-9]\d{9}$/.test(value);
+      const isEmail = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(value);
+      
+      if (!isPhone && !isEmail) {
+        throw new Error('Please enter a valid phone number or email');
+      }
+      return true;
+    }),
 ];
 
 // Reset password validation

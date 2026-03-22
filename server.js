@@ -59,9 +59,10 @@ app.use(helmet({
 app.use(hpp());
 
 // Rate Limiting
+// Rate Limiting - Environment based
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 100,  // ← From .env
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again after 15 minutes.'
@@ -70,11 +71,13 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+console.log(`✅ Rate Limiter: ${process.env.RATE_LIMIT_MAX || 100} requests per ${(parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000) / 60000} minutes`);
+
 app.use(limiter);
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 100,  // ← From .env
   message: {
     success: false,
     message: 'Too many authentication attempts from this IP, please try again after 15 minutes.'

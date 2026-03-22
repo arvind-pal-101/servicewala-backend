@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { protect, admin } = require('../middleware/auth');
-const validate = require('../middleware/validate'); // ← ADDED
+const validate = require('../middleware/validate');
 const {
   verifyWorkerValidation,
   rejectWorkerValidation,
   toggleUserStatusValidation
-} = require('../validators/adminValidators'); // ← ADDED
+} = require('../validators/adminValidators');
 
 const {
   getStats,
@@ -16,6 +16,7 @@ const {
   verifyWorker,
   rejectWorker,
   toggleUserStatus,
+  toggleWorkerStatus,  // ← NEW LINE ADDED
   getAnalytics
 } = require('../controllers/adminController');
 
@@ -31,8 +32,8 @@ router.put(
   '/workers/:id/verify',
   protect,
   admin,
-  verifyWorkerValidation,   // ← ADDED
-  validate,                 // ← ADDED
+  verifyWorkerValidation,
+  validate,
   verifyWorker
 );
 
@@ -50,9 +51,17 @@ router.put(
   '/users/:id/toggle-status',
   protect,
   admin,
-  toggleUserStatusValidation, // ← ADDED
-  validate,                   // ← ADDED
+  toggleUserStatusValidation,
+  validate,
   toggleUserStatus
+);
+
+// Toggle worker status - NEW!
+router.put(
+  '/workers/:id/toggle-status',
+  protect,
+  admin,
+  toggleWorkerStatus
 );
 
 module.exports = router;

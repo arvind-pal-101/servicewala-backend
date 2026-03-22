@@ -103,40 +103,66 @@ const loginWorker = async (req, res) => {
       });
     }
 
-    // Check for worker (include password field)
+    // Step 1: Check if worker exists
     const worker = await Worker.findOne({ phone })
       .select('+password')
       .populate('category', 'name icon');
 
     if (!worker) {
-      return res.status(401).json({
+      return res.status(404).json({
         success: false,
-        message: 'Invalid phone number or password'
+        message: 'No worker account found with this phone number. Please register first.',
+        errorType: 'USER_NOT_FOUND'
       });
     }
 
-    // Check if worker is active
+    // Step 2: Check verification status
+    if (worker.verification.status === 'rejected') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your application was rejected. Reason: ' + (worker.verification.rejectionReason || 'Contact support for details'),
+        errorType: 'ACCOUNT_REJECTED'
+      });
+    }
+
+    if (worker.verification.status === 'pending') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending admin verification. Please wait for approval.',
+        errorType: 'ACCOUNT_PENDING'
+      });
+    }
+
+    if (!worker.verification.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is not verified yet. Please wait for admin approval.',
+        errorType: 'ACCOUNT_NOT_VERIFIED'
+      });
+    }
+
+    // Step 3: Check if worker is active
     if (!worker.isActive) {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: 'Your account has been deactivated'
+        message: 'Your account has been deactivated. Please contact support.',
+        errorType: 'ACCOUNT_DEACTIVATED'
       });
     }
 
-    // Check password
+    // Step 4: Check password
     const isMatch = await worker.matchPassword(password);
 
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid phone number or password'
+        message: 'Incorrect password. Please try again or reset your password.',
+        errorType: 'WRONG_PASSWORD'
       });
     }
 
-    // Generate token
+    // Generate token and set cookie
     const token = generateToken(worker._id, 'worker');
-    
-    // Set HTTP-only cookie
     setCookie(res, token);
 
     res.json({
@@ -155,14 +181,14 @@ const loginWorker = async (req, res) => {
         verification: worker.verification,
         ratings: worker.ratings,
         availability: worker.availability
-        // No token in response - it's in cookie!
       }
     });
   } catch (error) {
     console.error('Worker login error:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Server error. Please try again later.',
+      errorType: 'SERVER_ERROR'
     });
   }
 };

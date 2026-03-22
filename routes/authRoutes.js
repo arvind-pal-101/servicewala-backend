@@ -154,26 +154,35 @@ const passwordResetLimiter = rateLimit({
 // Password Reset Routes
 
 // @route   POST /api/auth/forgot-password
+// @route   POST /api/auth/forgot-password
 router.post('/forgot-password', passwordResetLimiter, forgotPasswordValidation, validate, async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { identifier } = req.body;  // ← CHANGED from 'phone'
     const User = require('../models/User');
 
-    const user = await User.findOne({ phone });
+    // Check if identifier is phone or email
+    const isPhone = /^[6-9]\d{9}$/.test(identifier);
+    
+    // Find user by phone OR email
+    const user = isPhone 
+      ? await User.findOne({ phone: identifier })
+      : await User.findOne({ email: identifier.toLowerCase() });
+
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found with this phone number'
+        message: 'No account found with this phone number or email'
       });
     }
 
     if (!user.email) {
       return res.status(400).json({
         success: false,
-        message: 'No email registered. Please contact support.'
+        message: 'No email registered with this account. Please contact support.'
       });
     }
 
+    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     
     user.resetPasswordToken = crypto
@@ -181,11 +190,12 @@ router.post('/forgot-password', passwordResetLimiter, forgotPasswordValidation, 
       .update(resetToken)
       .digest('hex');
     
-    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
+    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;  // 30 minutes
     
     await user.save();
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    // Reset URL
+    const frontendUrl = process.env.FRONTEND_URL || 'https://servicebabu.in';
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     const message = `
@@ -208,7 +218,8 @@ If you didn't request this, please ignore this email.
 
       res.json({
         success: true,
-        message: 'Password reset email sent! Check your inbox.'
+        message: `Password reset link sent to ${user.email}`,
+        email: user.email  // ← RETURN email so frontend can show it
       });
     } catch (error) {
       user.resetPasswordToken = undefined;
@@ -217,7 +228,7 @@ If you didn't request this, please ignore this email.
       console.error('Forgot password – email send failed:', error.message || error);
       return res.status(500).json({
         success: false,
-        message: 'Email could not be sent. Check Render logs for details.'
+        message: 'Email could not be sent. Please try again later.'
       });
     }
   } catch (error) {

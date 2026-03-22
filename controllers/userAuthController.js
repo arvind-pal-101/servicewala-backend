@@ -86,38 +86,39 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check for user (include password field)
+    // Step 1: Check if user exists
     const user = await User.findOne({ phone }).select('+password');
 
     if (!user) {
-      return res.status(401).json({
+      return res.status(404).json({
         success: false,
-        message: 'Invalid phone number or password'
+        message: 'No account found with this phone number. Please register first.',
+        errorType: 'USER_NOT_FOUND'
       });
     }
 
-    // Check if user is active
+    // Step 2: Check if user is active
     if (!user.isActive) {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: 'Your account has been deactivated'
+        message: 'Your account has been deactivated. Please contact support.',
+        errorType: 'ACCOUNT_DEACTIVATED'
       });
     }
 
-    // Check password
+    // Step 3: Check password
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid phone number or password'
+        message: 'Incorrect password. Please try again or reset your password.',
+        errorType: 'WRONG_PASSWORD'
       });
     }
 
-    // Generate token
+    // Generate token and set cookie
     const token = generateToken(user._id, 'user');
-    
-    // Set HTTP-only cookie
     setCookie(res, token);
 
     res.json({
@@ -131,14 +132,14 @@ const loginUser = async (req, res) => {
         location: user.location,
         role: user.role,
         profilePic: user.profilePic
-        // No token in response - it's in cookie!
       }
     });
   } catch (error) {
     console.error('User login error:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Server error. Please try again later.',
+      errorType: 'SERVER_ERROR'
     });
   }
 };

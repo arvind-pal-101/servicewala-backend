@@ -225,6 +225,47 @@ const toggleUserStatus = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// @desc    Toggle worker status (activate/deactivate)
+// @route   PUT /api/admin/workers/:id/toggle-status
+// @access  Private (Admin)
+const toggleWorkerStatus = async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    const worker = await Worker.findById(req.params.id);
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Worker not found'
+      });
+    }
+
+    worker.isActive = isActive;
+    await worker.save();
+
+    // Audit log
+    try {
+      await AuditLog.create({
+        actor: req.user?._id,
+        actorType: req.user?.userType || 'unknown',
+        action: 'worker.status_toggled',
+        targetType: 'Worker',
+        targetId: worker._id.toString(),
+        meta: { isActive }
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Worker ${isActive ? 'activated' : 'deactivated'} successfully`,
+      data: worker
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // @desc    Get platform analytics
 // @route   GET /api/admin/analytics
@@ -304,5 +345,6 @@ module.exports = {
   verifyWorker,
   rejectWorker,
   toggleUserStatus,
+  toggleWorkerStatus,
   getAnalytics
 };
